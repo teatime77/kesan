@@ -1,0 +1,9 @@
+[package]
+name = "kesan"
+version = "0.1.0"
+authors = ["teatime77 <teatime77@live.jp>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
