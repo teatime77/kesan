@@ -1,212 +1,213 @@
 <html>
-  <head>
+<head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
     <script type="module" src="js/main.js?ver=1571928449" ></script>
     <script type="module">
-  </script>
-  
-
-  </head>
-  <body>
-    <!-- Note the usage of `type=module` here as this is an ES6 module -->
-    <script type="module">
-      import { initKesan } from "./js/main.js";
-      initKesan();
-
-      // Use ES module import syntax to import functionality from the module
-      // that we have compiled.
-      //
-      // Note that the `default` import is an initialization function which
-      // will "boot" the module and make it ready to use. Currently browsers
-      // don't support natively imported WebAssembly as an ES module, but
-      // eventually the manual initialization won't be required!
-      import init, { greet, MatF, MatD } from './pkg/kesan.js';
-      let instanceExports;
-
-      async function run() {
-        // First up we need to actually load the wasm file, so we use the
-        // default export to inform it where the wasm file is located on the
-        // server, and then we wait on the returned promise to wait for the
-        // wasm to be loaded.
-        // It may look like this: `await init('./pkg/without_a_bundler_bg.wasm');`,
-        // but there is also a handy default inside `init` function, which uses
-        // `import.meta` to locate the wasm file relatively to js file
-        //
-        // Note that instead of a string here you can also pass in an instance
-        // of `WebAssembly.Module` which allows you to compile your own module.
-        // Also note that the promise, when resolved, yields the wasm module's
-        // exports which is the same as importing the `*_bg` module in other
-        // modes
-        instanceExports = await init('./pkg/kesan_bg.wasm');  // kesan_bg
-
-
-
-        // const sys = Sys.new();
-        // const idx = sys.make_mat32();
-        // const cnt = sys.get_count();
-        // const dt = sys.get_mat32(idx);
-
-        // And afterwards we can use all the functionality defined in wasm.
-        // const result = add(1, 2);
-        // console.log(`1 + 2 = ${result}`);
-        // if (result !== 3)
-        //   throw new Error("wasm addition doesn't work!");
-
-        greet("今日は、さようなら、はじめまして。");
-
-        setInterval(testInv, 100);
-        // testInv();
-        testMat();
-      }
-
-      function testMat(){
-          const mf = MatF.new(4,4);
-          const ncol = mf.ncol();
-          const nrow = mf.nrow();
-
-          const v = [];
-          for(let i = 0; i < 4*4; i++){
-            v.push(Math.random() * 100);
-          }
-          const v2 = new Float32Array(v);
-          // mf.set(v2);
-
-          const dtPtr = mf.dt();
-          const dt = new Float32Array(instanceExports.memory.buffer, dtPtr, nrow * ncol);
-
-          for(let i = 0; i < dt.length; i++){
-            dt[i] = i * 10;
-          }
-
-          mf.test();
-
-          let A = MatF.new(3, 3);
-          const Adt = new Float32Array(instanceExports.memory.buffer, A.dt(), 3 * 3);
-          for(let [i, v] of Array.from([ 1, 2, 3, 5, 3, 2, 7, 5, 3 ]).entries()) {
-              Adt[i] = v;
-          }
-          A.print("A")
-
-          let B = MatF.new(3, 3);
-          const Bdt = new Float32Array(instanceExports.memory.buffer, B.dt(), 3 * 3);
-          for(let [i, v] of Array.from([ 2, 3, 5, 3, 2, 7, 5, 3, 1 ]).entries()) {
-              Bdt[i] = v;
-          }
-          B.print("B")
-
-          let C = A.dot(B);
-          C.print("C")
-
-          let I = MatF.I(3);
-          I.print("I")
-
-          let D = A.cat(I);
-          D.print("A.cat(I)")
-
-          A.swapRows(1, 2);
-          A.print("A swap 1<=>2")
-
-          let A2 = A.inv();
-          A2.print("A.inv");
-
-          let A3 = A.dot(A2);
-          A3.print("A A.inv");
-
-
-          mf.print("MF")
-
-          let E = MatD.new(3, 3);
-          const Edt = new Float64Array(instanceExports.memory.buffer, E.dt(), 3 * 3);
-          for(let [i, v] of Array.from([ 1, 2, 3, 5, 3, 2, 7, 5, 3 ]).entries()) {
-              Edt[i] = v;
-          }
-
-          console.log("double");
-          E.print("E")
-
-          let E2 = E.inv();
-          E2.print("E.inv");
-
-          let E3 = E.dot(E2);
-          E3.print("E E.inv");
-      }
-
-      function testInv(){
-          for(let fd of range(2)){
-              let Mat;
-              if(fd == 0){
-                  Mat = MatF;
-                  console.log("float --------------------------------------------------");
-              }
-              else{
-                  Mat = MatD;
-                  console.log("double --------------------------------------------------");
-              }
-
-              for(let index of range(10)){
-
-                  for(let n = 50; n <= 300; n+=50){
-                      let v = [];
-                      v.push((new Date()).getTime());
-
-                      let A = Mat.new(n, n);
-                      let Adt;
-                      if(fd == 0){
-
-                          Adt = new Float32Array(instanceExports.memory.buffer, A.dt(), n * n);
-                      }
-                      else{
-
-                          Adt = new Float64Array(instanceExports.memory.buffer, A.dt(), n * n);
-                      }
-                      for(let i = 0; i < Adt.length; i++){
-                          Adt[i] = 2 * Math.random() - 1;
-                      }
-
-                      v.push((new Date()).getTime());
-
-                      let B = A.inv();
-                      v.push((new Date()).getTime());
-
-                      let C = A.dot(B);
-                      v.push((new Date()).getTime());
-
-                      let D = Mat.I(n);
-                      v.push((new Date()).getTime());
-
-                      let E = C.sub(D);
-                      v.push((new Date()).getTime());
-
-                      let F = E.abs();
-                      v.push((new Date()).getTime());
-
-                      let diff = F.max();
-                      v.push((new Date()).getTime());
-
-                      let s = range(v.length - 1).map(i => "" + (v[i+1] - v[i])).join(", ");
-
-                      A.free();
-                      B.free();
-                      C.free();
-                      D.free();
-                      E.free();
-                      F.free();
-                      Adt = null;
-                      console.log(`diff ${n}: ${s} :${diff}`);
-                  }
-              }
-          }
-      }
-
-      function range(n){
-          return [...Array(n).keys()];
-      }
-
-
-      run();
-
-
     </script>
-  </body>
+</head>
+<body>
+<!-- Note the usage of `type=module` here as this is an ES6 module -->
+<script type="module">
+import { initKesan } from "./js/main.js";
+initKesan();
+
+// Use ES module import syntax to import functionality from the module
+// that we have compiled.
+//
+// Note that the `default` import is an initialization function which
+// will "boot" the module and make it ready to use. Currently browsers
+// don't support natively imported WebAssembly as an ES module, but
+// eventually the manual initialization won't be required!
+import init, { greet, MatF, MatD } from './pkg/kesan.js';
+let instanceExports;
+
+async function run() {
+    // First up we need to actually load the wasm file, so we use the
+    // default export to inform it where the wasm file is located on the
+    // server, and then we wait on the returned promise to wait for the
+    // wasm to be loaded.
+    // It may look like this: `await init('./pkg/without_a_bundler_bg.wasm');`,
+    // but there is also a handy default inside `init` function, which uses
+    // `import.meta` to locate the wasm file relatively to js file
+    //
+    // Note that instead of a string here you can also pass in an instance
+    // of `WebAssembly.Module` which allows you to compile your own module.
+    // Also note that the promise, when resolved, yields the wasm module's
+    // exports which is the same as importing the `*_bg` module in other
+    // modes
+    instanceExports = await init('./pkg/kesan_bg.wasm');  // kesan_bg
+
+    // const sys = Sys.new();
+    // const idx = sys.make_mat32();
+    // const cnt = sys.get_count();
+    // const dt = sys.get_mat32(idx);
+
+    // And afterwards we can use all the functionality defined in wasm.
+    // const result = add(1, 2);
+    // console.log(`1 + 2 = ${result}`);
+    // if (result !== 3)
+    //   throw new Error("wasm addition doesn't work!");
+
+    greet("今日は、さようなら、はじめまして。");
+
+    let cnt = 0;
+    let timerId = setInterval(()=>{
+        testInv();
+        cnt++;
+        if(cnt == 3){
+            clearInterval(timerId);
+        }
+    }, 100)
+    // setInterval(testInv, 100);
+    // testInv();
+    testMat();
+}
+
+function testMat(){
+    const mf = MatF.new(4,4);
+    const ncol = mf.ncol();
+    const nrow = mf.nrow();
+
+    const v = [];
+    for(let i = 0; i < 4*4; i++){
+      v.push(Math.random() * 100);
+    }
+    const v2 = new Float32Array(v);
+    // mf.set(v2);
+
+    const dtPtr = mf.dt();
+    const dt = new Float32Array(instanceExports.memory.buffer, dtPtr, nrow * ncol);
+
+    for(let i = 0; i < dt.length; i++){
+      dt[i] = i * 10;
+    }
+
+    mf.test();
+
+    let A = MatF.new(3, 3);
+    const Adt = new Float32Array(instanceExports.memory.buffer, A.dt(), 3 * 3);
+    for(let [i, v] of Array.from([ 1, 2, 3, 5, 3, 2, 7, 5, 3 ]).entries()) {
+        Adt[i] = v;
+    }
+    A.print("A")
+
+    let B = MatF.new(3, 3);
+    const Bdt = new Float32Array(instanceExports.memory.buffer, B.dt(), 3 * 3);
+    for(let [i, v] of Array.from([ 2, 3, 5, 3, 2, 7, 5, 3, 1 ]).entries()) {
+        Bdt[i] = v;
+    }
+    B.print("B")
+
+    let C = A.dot(B);
+    C.print("C")
+
+    let I = MatF.I(3);
+    I.print("I")
+
+    let D = A.cat(I);
+    D.print("A.cat(I)")
+
+    A.swapRows(1, 2);
+    A.print("A swap 1<=>2")
+
+    let A2 = A.inv();
+    A2.print("A.inv");
+
+    let A3 = A.dot(A2);
+    A3.print("A A.inv");
+
+
+    mf.print("MF")
+
+    let E = MatD.new(3, 3);
+    const Edt = new Float64Array(instanceExports.memory.buffer, E.dt(), 3 * 3);
+    for(let [i, v] of Array.from([ 1, 2, 3, 5, 3, 2, 7, 5, 3 ]).entries()) {
+        Edt[i] = v;
+    }
+
+    console.log("double");
+    E.print("E")
+
+    let E2 = E.inv();
+    E2.print("E.inv");
+
+    let E3 = E.dot(E2);
+    E3.print("E E.inv");
+}
+
+function testInv(){
+    for(let fd of range(2)){
+        let Mat;
+        if(fd == 0){
+            Mat = MatF;
+            console.log("float --------------------------------------------------");
+        }
+        else{
+            Mat = MatD;
+            console.log("double --------------------------------------------------");
+        }
+
+        for(let index of range(10)){
+
+            for(let n = 50; n <= 300; n+=50){
+                let v = [];
+                v.push((new Date()).getTime());
+
+                let A = Mat.new(n, n);
+                let Adt;
+                if(fd == 0){
+
+                    Adt = new Float32Array(instanceExports.memory.buffer, A.dt(), n * n);
+                }
+                else{
+
+                    Adt = new Float64Array(instanceExports.memory.buffer, A.dt(), n * n);
+                }
+                for(let i = 0; i < Adt.length; i++){
+                    Adt[i] = 2 * Math.random() - 1;
+                }
+
+                v.push((new Date()).getTime());
+
+                let B = A.inv();
+                v.push((new Date()).getTime());
+
+                let C = A.dot(B);
+                v.push((new Date()).getTime());
+
+                let D = Mat.I(n);
+                v.push((new Date()).getTime());
+
+                let E = C.sub(D);
+                v.push((new Date()).getTime());
+
+                let F = E.abs();
+                v.push((new Date()).getTime());
+
+                let diff = F.max();
+                v.push((new Date()).getTime());
+
+                let s = range(v.length - 1).map(i => "" + (v[i+1] - v[i])).join(", ");
+
+                A.free();
+                B.free();
+                C.free();
+                D.free();
+                E.free();
+                F.free();
+                Adt = null;
+                console.log(`diff ${n}: ${s} :${diff}`);
+            }
+        }
+    }
+}
+
+function range(n){
+    return [...Array(n).keys()];
+}
+
+run();
+</script>
+</body>
 </html>
 
