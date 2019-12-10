@@ -1,14 +1,16 @@
 <html>
 <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
-    <script type="module" src="js/main.js?ver=1" ></script>
-    <script type="module">
-    </script>
+    <script type="text/javascript" src="../lib/glMatrix-0.9.5.min.js"></script>
+    <script type="module" src="../js/kesan/ts/main.js?ver=1" ></script>
+    <script type="module" src="../js/gpgpu.ts/ts/gpgpu.js?ver=1" ></script>
+    <script type="module" src="../js/gpgpu.ts/ts/shape-shader.js?ver=1" ></script>
+    <script type="module" src="../pkg/kesan.js?ver=1" ></script>
 </head>
 <body>
 <!-- Note the usage of `type=module` here as this is an ES6 module -->
 <script type="module">
-import { initKesan } from "./js/main.js";
+import { initKesan } from "../js/kesan/ts/main.js" //"../js/ ../js/main.js";
 initKesan();
 
 // Use ES module import syntax to import functionality from the module
@@ -18,7 +20,7 @@ initKesan();
 // will "boot" the module and make it ready to use. Currently browsers
 // don't support natively imported WebAssembly as an ES module, but
 // eventually the manual initialization won't be required!
-import init, { greet, MatF, MatD } from './pkg/kesan.js';
+import init, { greet, MatF, MatD } from '../pkg/kesan.js';
 let instanceExports;
 
 async function run() {
@@ -35,7 +37,7 @@ async function run() {
     // Also note that the promise, when resolved, yields the wasm module's
     // exports which is the same as importing the `*_bg` module in other
     // modes
-    instanceExports = await init('./pkg/kesan_bg.wasm');  // kesan_bg
+    instanceExports = await init('../pkg/kesan_bg.wasm');  // kesan_bg
 
     // const sys = Sys.new();
     // const idx = sys.make_mat32();
@@ -58,8 +60,6 @@ async function run() {
             clearInterval(timerId);
         }
     }, 100)
-    // setInterval(testInv, 100);
-    // testInv();
     testMat();
 }
 
@@ -207,7 +207,12 @@ function range(n){
 }
 
 run();
+
 </script>
+
+<canvas id="webgl-canvas" style="border: none;" width="500" height="500"></canvas>
+<canvas id="canvas-2d" style="border: none;" width="256" height="256"></canvas>
+
 </body>
 </html>
 
