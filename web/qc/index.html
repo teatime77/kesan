@@ -1,5 +1,6 @@
 <html>
 <head>
+    <title>水素原子の電子軌道</title>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
     <script type="text/javascript" src="../lib/glMatrix-0.9.5.min.js"></script>
     <script type="module" src="../js/kesan/ts/main.js?ver=1" ></script>
@@ -11,7 +12,6 @@
 <!-- Note the usage of `type=module` here as this is an ES6 module -->
 <script type="module">
 import { initKesan } from "../js/kesan/ts/main.js" //"../js/ ../js/main.js";
-initKesan();
 
 // Use ES module import syntax to import functionality from the module
 // that we have compiled.
@@ -20,7 +20,8 @@ initKesan();
 // will "boot" the module and make it ready to use. Currently browsers
 // don't support natively imported WebAssembly as an ES module, but
 // eventually the manual initialization won't be required!
-import init, { greet, MatF, MatD } from '../pkg/kesan.js';
+import init, { greet, MatF, MatD, PointsRs } from '../pkg/kesan.js';
+
 let instanceExports;
 
 async function run() {
@@ -50,7 +51,15 @@ async function run() {
     // if (result !== 3)
     //   throw new Error("wasm addition doesn't work!");
 
+    const size = 40 * 40 * 40;
+    const points = PointsRs.new(size);
+    const positions = new Float32Array(instanceExports.memory.buffer, points.positions(), size * 3);
+    const colors    = new Float32Array(instanceExports.memory.buffer, points.colors()   , size * 4);
+
+    console.log(`平均:${points.avg()}`);
+
     greet("今日は、さようなら、はじめまして。");
+    initKesan(greet, positions, colors);
 
     let cnt = 0;
     let timerId = setInterval(()=>{

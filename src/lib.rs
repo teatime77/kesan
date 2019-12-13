@@ -2,9 +2,11 @@
 
 extern crate wasm_bindgen;
 extern crate num_traits;
+extern crate rand;
 
 use wasm_bindgen::prelude::*;
 use web_sys::console;
+use rand::prelude::*;
 
 #[wasm_bindgen]
 pub fn greet(name: &str) {
@@ -21,6 +23,135 @@ pub fn greet(name: &str) {
     let v2: Vec<_> = v1.iter().map(|x| x.to_string()).collect();
     let joined = v2.join("-");
     console::log_1(&joined.into());
+}
+
+#[wasm_bindgen]
+pub struct PointsRs {
+    size: u32,
+    positions: Vec<f32>,
+    colors: Vec<f32>,
+    avg: f32
+}
+
+#[wasm_bindgen]
+impl PointsRs {
+    pub fn fff(){
+
+    }
+
+    pub fn new(size:u32) -> PointsRs {
+        let mut positions: Vec<f32> = vec![0.0; (size * 3) as usize];
+        let mut colors   : Vec<f32> = vec![0.0; (size * 4) as usize];
+
+        let mut rng = thread_rng();
+    
+        let mut i1:usize = 0;
+        let mut i2:usize = 0;
+        let mut sum1:f32 = 0.0;
+        let w:f32 = 16.0;
+
+        for _idx in 0..size {
+            loop {
+                let x:f32 = -w + 2.0 * w * rng.gen::<f32>();
+                let y:f32 = -w + 2.0 * w * rng.gen::<f32>();
+                let z:f32 = -w + 2.0 * w * rng.gen::<f32>();
+    
+                let r:f32 = (x*x + y*y + z*z).sqrt();
+
+                let theta:f32;
+                let phi:f32;
+                if r == 0.0 {
+    
+                    continue;
+                }
+                else{
+    
+                    // z = r cos θ
+                    let z_r = z / r;
+                    if z_r < -1.0 || 1.0 < z_r {
+                        continue;
+                    }
+                    theta = z_r.acos();
+    
+                    // x = r sin θ cos φ
+                    let r_sin:f32 = r * theta.sin();
+                    if r_sin == 0.0 {
+
+                        continue;
+                    }
+                    else{
+
+                        let x2 = x / r_sin;
+                        if x2 < -1.0 || 1.0 < x2 {
+                            continue;
+                        }
+    
+                        phi   = x2.acos();
+                    }
+                }
+    
+                let sth:f32 = theta.sin();
+                let f:f32 = (- r / 3.0).exp() * sth * sth * (2.0 * phi).sin();
+
+                let R:f32 = f * f;
+                sum1 += R;
+    
+                if R < 1.0 * rng.gen::<f32>() {
+                    continue;
+                }
+    
+                positions[i1    ] = x / w;
+                positions[i1 + 1] = y / w;
+                positions[i1 + 2] = z / w;
+                i1  += 3;
+    
+                let mut cr = 0.0;
+                let cg = 0.0;
+                let mut cb = 0.0;
+                if 0.0 <= x * y {
+
+                    cr = 1.0;
+                }
+                else{
+
+                    cb = 1.0;
+                }
+    
+                colors[i2] = cr;
+                colors[i2 + 1] = cg;
+                colors[i2 + 2] = cb;
+                colors[i2 + 3] = 1.0;
+                i2  += 4;
+    
+                break;
+            }
+        }
+        
+        let avg:f32 = sum1 / (size as f32);
+
+        PointsRs {
+            size,
+            positions,
+            colors,
+            avg
+        }
+    }
+
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    pub fn positions(&self) -> *const f32 {
+        self.positions.as_ptr()
+    }
+
+    pub fn colors(&self) -> *const f32 {
+        self.colors.as_ptr()
+    }
+
+    pub fn avg(&self) -> f32 {
+        self.avg
+    }
 }
 
 //--------------------------------------------------------------------------------
