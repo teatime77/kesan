@@ -4,9 +4,15 @@ extern crate wasm_bindgen;
 extern crate num_traits;
 extern crate rand;
 
+mod mat;
+
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use rand::prelude::*;
+
+use self::mat::matf::MatF;
+use self::mat::matd::MatD;
+use self::mat::matg::Mat;
 
 #[wasm_bindgen]
 pub fn greet(name: &str) {
@@ -126,7 +132,7 @@ impl PointsRs {
                 break;
             }
         }
-        
+
         let avg:f32 = sum1 / (size as f32);
 
         PointsRs {
@@ -154,524 +160,103 @@ impl PointsRs {
     }
 }
 
-//--------------------------------------------------------------------------------
-//
-//  MatF
-//
-//--------------------------------------------------------------------------------
 
+
+//-------------------------------------------------- Test-Mat
 
 #[wasm_bindgen]
-pub struct MatF {
-    nrow: u32,
-    ncol: u32,
-    dt: Vec<f32>,
+pub struct TestMat {
+    diff1: f32,
+    diff2: f64,
 }
 
 #[wasm_bindgen]
-impl MatF {
-    pub fn new(nrow:u32, ncol:u32) -> MatF {
-        let nrow:u32 = nrow;
-        let ncol:u32 = ncol;
+impl TestMat {
+    pub fn new(nrow:u32, ncol:u32) -> TestMat {
+        let mut rng = thread_rng();
 
-        let dt: Vec<f32> = vec![0.0; (nrow * ncol) as usize];
+        let mut A1: Mat<f32> = Mat::<f32>::new(nrow, ncol);
+        let mut A2: Mat<f64> = Mat::<f64>::new(nrow, ncol);
 
-        MatF {
-            nrow,
-            ncol,
-            dt,
+        for i in 0..(nrow*ncol) {
+            A1.dt[i as usize] = rng.gen::<f32>();
+            A2.dt[i as usize] = rng.gen::<f64>();
+        }
+
+        let B1: Mat<f32> = A1.inv();
+        let B2: Mat<f64> = A2.inv();
+
+        let C1: Mat<f32> = A1.dot(&B1);
+        let C2: Mat<f64> = A2.dot(&B2);
+
+        let I1 = Mat::<f32>::I(nrow);
+        let I2 = Mat::<f64>::I(nrow);
+
+        let D1 = I1.sub(&C1);
+        let D2 = I2.sub(&C2);
+
+        let E1 = D1.abs();
+        let E2 = D2.abs();
+
+        E1.print("E1 ");
+        E2.print("E2 ");
+
+        let diff1 = E1.max();
+        let diff2 = E2.max();
+
+        TestMat {
+            diff1,
+            diff2,
         }
     }
 
-    pub fn I(dim:u32) -> MatF {
-        let mut dt: Vec<f32> = vec![0.0; (dim * dim) as usize];
+    pub fn test(nrow:u32, ncol:u32) {
+        let mut rng = thread_rng();
 
-        for i in 0..dim {
-            dt[(i * dim + i) as usize] = 1.0;
+        let mut A1: MatF = MatF::new(nrow, ncol);
+        let mut A2: MatD = MatD::new(nrow, ncol);
+
+        for i in 0..(nrow*ncol) {
+            A1.dt[i as usize] = rng.gen::<f32>();
+            A2.dt[i as usize] = rng.gen::<f64>();
         }
 
-        MatF {
-            nrow: dim,
-            ncol: dim,
-            dt,
-        }
-    }
+        let B1: MatF = A1.inv();
+        let B2: MatD = A2.inv();
 
-    pub fn nrow(&self) -> u32 {
-        self.nrow
-    }
+        let C1: MatF = A1.dot(&B1);
+        let C2: MatD = A2.dot(&B2);
 
-    pub fn ncol(&self) -> u32 {
-        self.ncol
-    }
+        let I1 = MatF::I(nrow);
+        let I2 = MatD::I(nrow);
 
-    pub fn dt(&self) -> *const f32 {
-        self.dt.as_ptr()
-    }
+        let D1 = I1.sub(&C1);
+        let D2 = I2.sub(&C2);
 
-    pub fn test(&mut self){
-        for i in 0..self.dt.len(){
-            self.dt[i] *= 2.0;
-        }
-    }
+        let E1 = D1.abs();
+        let E2 = D2.abs();
 
-    pub fn set2(mut self, dt: *const f32){
-        unsafe {
-            for i in 0..self.dt.len(){
-                self.dt[i] = * dt.offset(i as isize);
-            }
-        }
-    }
+        E1.print("E1-F ");
+        E2.print("E2-D ");
 
-//    #[inline]
-    #[inline(always)]
-    fn at(&self, row:u32, col:u32) -> f32 {
-        self.dt[(row * self.ncol + col) as usize]
-    }
+        let diff1 = E1.max();
+        let diff2 = E2.max();
 
-//    #[inline]
-    #[inline(always)]
-    fn at2(&mut self, row:u32, col:u32) -> &mut f32 {
-        &mut self.dt[(row * self.ncol + col) as usize]
-    }
+        let js1: JsValue = diff1.into();
+        let js2: JsValue = diff2.into();
 
-    pub fn print(&self, s: &str){
-        console::log_1(&format!("{} = [", s).into());
-
-        for row in 0..self.nrow {
-
-            let v2: Vec<_> = (0..self.ncol).map(|col| self.at(row, col).to_string()).collect();
-            let joined = v2.join(", ");
-            console::log_1(&format!("\t{}", joined).into());
-        }
-        console::log_1(&"]".into());
+        console::log_2(&"diff1 = ".into(), &js1);
+        console::log_2(&"diff2 = ".into(), &js2);
     }
 
 
-    pub fn abs(&self) -> MatF {
-        let dt: Vec<f32> = self.dt.iter().map(|x| x.abs() ).collect();
-
-        MatF {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            dt,
-        }
+    pub fn diff1(&self) -> f32 {
+        self.diff1
     }
 
-    pub fn max(&self) -> f32 {
-        self.dt.iter().fold(0.0, |x, y| x.max(*y))
-    }
-
-    pub fn sub(&self, A: &MatF) -> MatF {
-        let dt: Vec<f32> = (0..self.dt.len()).map(|i| self.dt[i] - A.dt[i] ).collect();
-
-        MatF {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            dt,
-        }
-    }
-
-
-    pub fn dot(&self,  A: &MatF) -> MatF{
-//        console.assert(this.cols == A.rows);
-
-        let nrow = self.nrow;
-        let ncol = A.ncol;
-
-        let mut dt: Vec<f32> = vec![0.0; (nrow * ncol) as usize];
-
-        for row in 0..nrow {
-            for col in 0..ncol {
-                let mut sum = 0.0;
-
-                for k in 0..self.ncol {
-                    sum += self.at(row, k) * A.at(k, col);
-                }
-
-                dt[(row * self.ncol + col) as usize] = sum;
-            }
-        }
-
-        MatF {
-            nrow,
-            ncol,
-            dt,
-        }
-    }
-
-    pub fn cat(&self, A: &MatF) -> MatF {
-        let mut B = MatF::new(self.nrow, self.ncol + A.ncol);
-
-        for row in 0..self.nrow {
-            for col in 0..self.ncol {
-//                B.set(row, col, self.at(row, col));
-                * B.at2(row, col) = self.at(row, col);
-            }
-
-            for col in 0..A.ncol {
-//                B.set(row, self.ncol + col, A.at(row, col));
-                * B.at2(row, self.ncol + col) = A.at(row, col);
-            }
-        }
-
-        B
-    }
-
-    fn selectPivot(&self, idx: u32) -> u32 {
-        let mut maxRow = idx;
-        let mut maxVal = num_traits::abs(self.at(idx, idx) );
-
-        for row in idx + 1..self.nrow {
-            let val = num_traits::abs(self.at(row, idx));
-
-            if maxVal < val {
-                maxRow = row;
-                maxVal = val;
-            }
-        }
-
-        maxRow
-    }
-
-    pub fn swapRows(&mut self, row1: u32, row2: u32){
-        for col in 0..self.ncol {
-            let tmp = self.at(row1, col);
-
-            * self.at2(row1, col) = self.at(row2, col);
-            * self.at2(row2, col) = tmp;
-        }
-    }
-
-    pub fn inv(&self) -> MatF {
-//    console.assert(this.rows == this.cols);
-
-        // let mut A = self.cat(&MatF::I(self.nrow));
-        let mut A = MatF::new(self.nrow, self.ncol + self.ncol);
-
-        for row in 0..self.nrow {
-            for col in 0..self.ncol {
-                * A.at2(row, col) = self.at(row, col);
-            }
-
-            * A.at2(row, self.ncol + row) = 1.0;
-        }
-
-
-        for r1 in 0..A.nrow {
-            if r1 + 1 < A.nrow {
-
-                // ピボットの行を選ぶ。
-                let r2 = A.selectPivot(r1);
-
-                if r2 != r1 {
-                    // ピボットの行が現在行と違う場合
-
-                    // 行を入れ替える。
-                    A.swapRows(r1, r2);
-                }
-            }
-
-            // ピボットの逆数
-            let  div = 1.0 / A.at(r1, r1);
-
-            for c in 0..A.ncol {
-                if c == r1 {
-                    // 対角成分の場合
-
-                    * A.at2(r1,c) = 1.0;
-                }
-                else{
-                    // 対角成分でない場合
-
-                    // ピボットの逆数をかける。
-                    *A.at2(r1, c) *= div;
-                }
-            }
-
-            for  r2 in 0..self.nrow{
-                if r2 != r1 {
-                    // ピボットの行でない場合
-
-                    let a = - A.at(r2, r1);
-                    *A.at2(r2, r1) = 0.0;
-
-                    for  c in r1 + 1..A.ncol {
-                        *A.at2(r2, c) += a * A.at(r1, c) ;
-                    }
-                }
-            }
-        }
-
-        let mut B = MatF::new( self.nrow, self.ncol);
-
-        for  r in 0..self.nrow {
-            for c in 0..self.ncol {
-                *B.at2(r, c) = A.at(r, self.ncol + c);
-            }
-        }
-
-        B
+    pub fn diff2(&self) -> f64 {
+        self.diff2
     }
 }
 
 
-//--------------------------------------------------------------------------------
-//
-//  MatD
-//
-//--------------------------------------------------------------------------------
-
-#[wasm_bindgen]
-pub struct MatD {
-    nrow: u32,
-    ncol: u32,
-    dt: Vec<f64>,
-}
-
-#[wasm_bindgen]
-impl MatD {
-    pub fn new(nrow:u32, ncol:u32) -> MatD {
-        let nrow:u32 = nrow;
-        let ncol:u32 = ncol;
-
-        let dt: Vec<f64> = vec![0.0; (nrow * ncol) as usize];
-
-        MatD {
-            nrow,
-            ncol,
-            dt,
-        }
-    }
-
-    pub fn I(dim:u32) -> MatD {
-        let mut dt: Vec<f64> = vec![0.0; (dim * dim) as usize];
-
-        for i in 0..dim {
-            dt[(i * dim + i) as usize] = 1.0;
-        }
-
-        MatD {
-            nrow: dim,
-            ncol: dim,
-            dt,
-        }
-    }
-
-    pub fn nrow(&self) -> u32 {
-        self.nrow
-    }
-
-    pub fn ncol(&self) -> u32 {
-        self.ncol
-    }
-
-    pub fn dt(&self) -> *const f64 {
-        self.dt.as_ptr()
-    }
-
-    pub fn test(&mut self){
-        for i in 0..self.dt.len(){
-            self.dt[i] *= 2.0;
-        }
-    }
-
-    pub fn set2(mut self, dt: *const f64){
-        unsafe {
-            for i in 0..self.dt.len(){
-                self.dt[i] = * dt.offset(i as isize);
-            }
-        }
-    }
-
-//    #[inline]
-    #[inline(always)]
-    fn at(&self, row:u32, col:u32) -> f64 {
-        self.dt[(row * self.ncol + col) as usize]
-    }
-
-//    #[inline]
-    #[inline(always)]
-    fn at2(&mut self, row:u32, col:u32) -> &mut f64 {
-        &mut self.dt[(row * self.ncol + col) as usize]
-    }
-
-    pub fn print(&self, s: &str){
-        console::log_1(&format!("{} = [", s).into());
-
-        for row in 0..self.nrow {
-
-            let v2: Vec<_> = (0..self.ncol).map(|col| self.at(row, col).to_string()).collect();
-            let joined = v2.join(", ");
-            console::log_1(&format!("\t{}", joined).into());
-        }
-        console::log_1(&"]".into());
-    }
-
-
-    pub fn abs(&self) -> MatD {
-        let dt: Vec<f64> = self.dt.iter().map(|x| x.abs() ).collect();
-
-        MatD {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            dt,
-        }
-    }
-
-    pub fn max(&self) -> f64 {
-        self.dt.iter().fold(0.0, |x, y| x.max(*y))
-    }
-
-    pub fn sub(&self, A: &MatD) -> MatD {
-        let dt: Vec<f64> = (0..self.dt.len()).map(|i| self.dt[i] - A.dt[i] ).collect();
-
-        MatD {
-            nrow: self.nrow,
-            ncol: self.ncol,
-            dt,
-        }
-    }
-
-
-    pub fn dot(&self,  A: &MatD) -> MatD{
-//        console.assert(this.cols == A.rows);
-
-        let nrow = self.nrow;
-        let ncol = A.ncol;
-
-        let mut dt: Vec<f64> = vec![0.0; (nrow * ncol) as usize];
-
-        for row in 0..nrow {
-            for col in 0..ncol {
-                let mut sum = 0.0;
-
-                for k in 0..self.ncol {
-                    sum += self.at(row, k) * A.at(k, col);
-                }
-
-                dt[(row * self.ncol + col) as usize] = sum;
-            }
-        }
-
-        MatD {
-            nrow,
-            ncol,
-            dt,
-        }
-    }
-
-    pub fn cat(&self, A: &MatD) -> MatD {
-        let mut B = MatD::new(self.nrow, self.ncol + A.ncol);
-
-        for row in 0..self.nrow {
-            for col in 0..self.ncol {
-//                B.set(row, col, self.at(row, col));
-                * B.at2(row, col) = self.at(row, col);
-            }
-
-            for col in 0..A.ncol {
-//                B.set(row, self.ncol + col, A.at(row, col));
-                * B.at2(row, self.ncol + col) = A.at(row, col);
-            }
-        }
-
-        B
-    }
-
-    fn selectPivot(&self, idx: u32) -> u32 {
-        let mut maxRow = idx;
-        let mut maxVal = num_traits::abs(self.at(idx, idx) );
-
-        for row in idx + 1..self.nrow {
-            let val = num_traits::abs(self.at(row, idx));
-
-            if maxVal < val {
-                maxRow = row;
-                maxVal = val;
-            }
-        }
-
-        maxRow
-    }
-
-    pub fn swapRows(&mut self, row1: u32, row2: u32){
-        for col in 0..self.ncol {
-            let tmp = self.at(row1, col);
-
-            * self.at2(row1, col) = self.at(row2, col);
-            * self.at2(row2, col) = tmp;
-        }
-    }
-
-    pub fn inv(&self) -> MatD {
-//    console.assert(this.rows == this.cols);
-
-        // let mut A = self.cat(&MatD::I(self.nrow));
-        let mut A = MatD::new(self.nrow, self.ncol + self.ncol);
-
-        for row in 0..self.nrow {
-            for col in 0..self.ncol {
-                * A.at2(row, col) = self.at(row, col);
-            }
-
-            * A.at2(row, self.ncol + row) = 1.0;
-        }
-
-
-        for r1 in 0..A.nrow {
-            if r1 + 1 < A.nrow {
-
-                // ピボットの行を選ぶ。
-                let r2 = A.selectPivot(r1);
-
-                if r2 != r1 {
-                    // ピボットの行が現在行と違う場合
-
-                    // 行を入れ替える。
-                    A.swapRows(r1, r2);
-                }
-            }
-
-            // ピボットの逆数
-            let  div = 1.0 / A.at(r1, r1);
-
-            for c in 0..A.ncol {
-                if c == r1 {
-                    // 対角成分の場合
-
-                    * A.at2(r1,c) = 1.0;
-                }
-                else{
-                    // 対角成分でない場合
-
-                    // ピボットの逆数をかける。
-                    *A.at2(r1, c) *= div;
-                }
-            }
-
-            for  r2 in 0..self.nrow{
-                if r2 != r1 {
-                    // ピボットの行でない場合
-
-                    let a = - A.at(r2, r1);
-                    *A.at2(r2, r1) = 0.0;
-
-                    for  c in r1 + 1..A.ncol {
-                        *A.at2(r2, c) += a * A.at(r1, c) ;
-                    }
-                }
-            }
-        }
-
-        let mut B = MatD::new( self.nrow, self.ncol);
-
-        for  r in 0..self.nrow {
-            for c in 0..self.ncol {
-                *B.at2(r, c) = A.at(r, self.ncol + c);
-            }
-        }
-
-        B
-    }
-}

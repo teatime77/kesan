@@ -1,0 +1,36 @@
+<html>
+<head>
+    <title>行列</title>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+    <script type="text/javascript" src="../lib/glMatrix-0.9.5.min.js"></script>
+    <script type="module" src="../js/kesan/ts/main.js?ver=1576365476" ></script>
+    <script type="module" src="../js/gpgpu.ts/ts/gpgpu.js?ver=1576365476" ></script>
+    <script type="module" src="../js/gpgpu.ts/ts/shape-shader.js?ver=1576365476" ></script>
+    <script type="module" src="../pkg/kesan.js?ver=1576365476" ></script>
+</head>
+<body>
+<script type="module">
+import { initKesan } from "../js/kesan/ts/main.js" //"../js/ ../js/main.js";
+
+import init, { TestMat } from '../pkg/kesan.js';
+
+let instanceExports;
+
+async function run() {
+    instanceExports = await init('../pkg/kesan_bg.wasm');  // kesan_bg
+
+    const test = TestMat.new(5, 5);
+    console.log(`diff ${test.diff1()} ${test.diff2()}`);
+    TestMat.test(5, 5);
+}
+
+run();
+
+</script>
+
+<canvas id="webgl-canvas" style="border: none;" width="500" height="500"></canvas>
+<canvas id="canvas-2d" style="border: none;" width="256" height="256"></canvas>
+
+</body>
+</html>
+
