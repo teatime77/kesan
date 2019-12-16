@@ -3,16 +3,19 @@
 extern crate wasm_bindgen;
 extern crate num_traits;
 extern crate rand;
+extern crate num;
 
 mod mat;
 
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 use rand::prelude::*;
+use num::complex::{Complex32, Complex64};
 
 use self::mat::matf::MatF;
 use self::mat::matd::MatD;
 use self::mat::matg::Mat;
+use self::mat::matrc::MatRC;
 
 #[wasm_bindgen]
 pub fn greet(name: &str) {
@@ -249,6 +252,100 @@ impl TestMat {
         console::log_2(&"diff2 = ".into(), &js2);
     }
 
+    pub fn testRC(nrow:u32, ncol:u32){
+        let m = MatRC::<Complex32>::new(5, 5);
+        m.print("mat-rc-c32");
+    
+        let m1 = MatRC::<Complex64>::new(5, 5);
+        m1.print("mat-rc-c64");
+    
+        // let m2 = MatRC::<f32>::new(5, 5);
+        // m2.print("mat-rc-f32");
+    
+        // let m3 = MatRC::<f64>::new(5, 5);
+        // m3.print("mat-rc-f64");
+    
+        let mut rng = thread_rng();
+    
+        let mut A1: MatRC<f32> = MatRC::<f32>::new(nrow, ncol);
+        let mut A2: MatRC<f64> = MatRC::<f64>::new(nrow, ncol);
+    
+        for i in 0..(nrow*ncol) {
+            A1.dt[i as usize] = rng.gen::<f32>();
+            A2.dt[i as usize] = rng.gen::<f64>();
+        }
+    
+        let B1: MatRC<f32> = A1.inv();
+        let B2: MatRC<f64> = A2.inv();
+    
+        let C1: MatRC<f32> = A1.dot(&B1);
+        let C2: MatRC<f64> = A2.dot(&B2);
+    
+        let I1 = MatRC::<f32>::I(nrow);
+        let I2 = MatRC::<f64>::I(nrow);
+    
+        let D1 = I1.sub(&C1);
+        let D2 = I2.sub(&C2);
+    
+        let E1 = D1.abs();
+        let E2 = D2.abs();
+    
+        E1.print("E1 ");
+        E2.print("E2 ");
+    
+        let diff1 = E1.max();
+        let diff2 = E2.max();
+    
+        let js1: JsValue = diff1.into();
+        let js2: JsValue = diff2.into();
+
+        console::log_2(&"diff rc f32 = ".into(), &js1);
+        console::log_2(&"diff rc f64 = ".into(), &js2);
+    }
+
+
+    pub fn testRC2(nrow:u32, ncol:u32){    
+        let mut rng = thread_rng();
+    
+        let mut A1: MatRC<Complex32> = MatRC::<Complex32>::new(nrow, ncol);
+        let mut A2: MatRC<Complex64> = MatRC::<Complex64>::new(nrow, ncol);
+    
+        for i in 0..(nrow*ncol) {
+            A1.dt[i as usize] = Complex32::new(rng.gen::<f32>(), rng.gen::<f32>());
+            A2.dt[i as usize] = Complex64::new(rng.gen::<f64>(), rng.gen::<f64>()) ;
+        }
+    
+        let B1: MatRC<Complex32> = A1.inv();
+        let B2: MatRC<Complex64> = A2.inv();
+    
+        let C1: MatRC<Complex32> = A1.dot(&B1);
+        let C2: MatRC<Complex64> = A2.dot(&B2);
+    
+        let I1 = MatRC::<Complex32>::I(nrow);
+        let I2 = MatRC::<Complex64>::I(nrow);
+    
+        let D1 = I1.sub(&C1);
+        let D2 = I2.sub(&C2);
+    
+        let E1 = D1.abs();
+        let E2 = D2.abs();
+    
+        E1.print("E1 ");
+        E2.print("E2 ");
+    
+        let diff1 = E1.max();
+        let diff2 = E2.max();
+    
+        let js1r: JsValue = diff1.re.into();
+        let js1i: JsValue = diff1.im.into();
+        let js2r: JsValue = diff2.re.into();
+        let js2i: JsValue = diff2.im.into();
+
+        console::log_2(&"diff rc C32.re = ".into(), &js1r);
+        console::log_2(&"diff rc C32.im = ".into(), &js1i);
+        console::log_2(&"diff rc C64.re = ".into(), &js2r);
+        console::log_2(&"diff rc C64.im = ".into(), &js2i);
+    }
 
     pub fn diff1(&self) -> f32 {
         self.diff1
